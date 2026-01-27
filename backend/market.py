@@ -3,9 +3,20 @@ import os
 
 def analyze_market(videos):
     api_key = os.getenv("YOUTUBE_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing YOUTUBE_API_KEY")
+
     youtube = build("youtube", "v3", developerKey=api_key)
 
-    ids = ",".join(v["video_id"] for v in videos)
+    # ✅ FIX ICI
+    ids = ",".join(
+        v["id"]
+        for v in videos
+        if isinstance(v, dict) and "id" in v
+    )
+
+    if not ids:
+        return []
 
     stats = youtube.videos().list(
         part="statistics,contentDetails",
@@ -14,7 +25,7 @@ def analyze_market(videos):
 
     results = []
 
-    for v, s in zip(videos, stats["items"]):
+    for v, s in zip(videos, stats.get("items", [])):
         views = int(s["statistics"].get("viewCount", 0))
         likes = int(s["statistics"].get("likeCount", 0))
 
@@ -22,7 +33,7 @@ def analyze_market(videos):
         score = views * like_rate
 
         results.append({
-            "title": v["title"],
+            "title": v["snippet"]["title"],  # ✅ titre correct
             "views": views,
             "likes": likes,
             "like_rate": like_rate,
