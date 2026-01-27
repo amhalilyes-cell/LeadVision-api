@@ -1,26 +1,39 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from backend.youtube import search_youtube
 from backend.market import analyze_market
 
-def main():
-    print("\n🚀 Starting YouTube Market Scanner...\n")
+app = FastAPI()
 
-    videos = search_youtube("alex hormozi")
+# CORS (pour GitHub Pages)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "https://amhalilyes-cell.github.io",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    print(f"\nFound {len(videos)} videos\n")
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
+@app.get("/run-agent")
+def run_agent(query: str = "alex hormozi"):
+    videos = search_youtube(query)
     results = analyze_market(videos)
 
-    print("\n=== TOP OPPORTUNITIES ===\n")
-    for r in results[:10]:
-        print(
-            f"{int(r['score'])} | "
-            f"{int(r['views_per_day'])} v/d | "
-            f"{round(r['like_rate']*100,2)}% | "
-            f"{r['title']}"
-        )
-
-if __name__ == "__main__":
-    main()
+    # on renvoie un JSON propre au frontend
+    return {
+        "query": query,
+        "videos_found": len(videos),
+        "top_opportunities": results[:10],
+    }
